@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>SmartGlasses Media Studio</title>
+
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            background: #0b0d12;
+            color: #eef2f8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            max-width: 900px;
+            margin-inline: auto;
+        }
+
+        h1 {
+            font-size: 1.35rem;
+            margin: 0 0 5px;
+        }
+
+        p {
+            color: #aeb8c8;
+            margin: 5px 0 14px;
+        }
+
+        .panel {
+            background: #151a24;
+            border: 1px solid #293244;
+            border-radius: 14px;
+            padding: 14px;
+            margin: 12px 0;
+        }
+
+        label {
+            display: block;
+            font-size: .9rem;
+            margin: 10px 0 5px;
+            color: #d9e1ee;
+        }
+
+        input,
+        select,
+        button {
+            font: inherit;
+        }
+
+        input[type=file],
+        input[type=number],
+        select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 9px;
+            border: 1px solid #39465d;
+            background: #0d121b;
+            color: #fff;
+        }
+
+        input[type=range] {
+            width: 100%;
+        }
+
+        button {
+            border: 0;
+            border-radius: 10px;
+            padding: 13px 14px;
+            background: #2675e8;
+            color: white;
+            font-weight: 700;
+        }
+
+        button.secondary {
+            background: #303b50;
+        }
+
+        button:disabled {
+            opacity: .45;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .row>* {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        canvas {
+            display: block;
+            width: min(100%, 320px);
+            height: auto;
+            max-height: 65vh;
+            object-fit: contain;
+            background: #000;
+            border: 1px solid #45516a;
+            border-radius: 8px;
+            margin: 10px auto;
+            touch-action: none;
+        }
+
+        .small {
+            font-size: .82rem;
+            color: #aeb8c8;
+        }
+
+        .status {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            color: #a9d6ff;
+        }
+
+        #send {
+            width: 100%;
+            font-size: 1.05rem;
+            padding: 16px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>SmartGlasses Media Studio</h1>
+    <p>
+        Prepare a photo or animated GIF for your 128×160 ST7735 display,
+        then send it directly to your glasses over Wi-Fi.
+    </p>
+
+    <a href="intent://192.168.4.1/#Intent;scheme=http;package=com.android.chrome;end">
+        Open in Browser
+    </a>
+
+    <section class="panel">
+
+        <label for="file">Select image or GIF</label>
+        <input id="file" type="file" accept="image/*,.gif">
+
+        <div class="row">
+            <div>
+                <label for="orientation">Display orientation</label>
+                <select id="orientation">
+                    <option value="portrait">Portrait · 128×160</option>
+                    <option value="landscape">Landscape · 160×128</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="delay">GIF frame delay (ms)</label>
+                <input id="delay" type="number" min="40" max="2000" step="10" value="100">
+            </div>
+        </div>
+
+        <div class="row">
+            <div>
+                <label for="limit">Maximum GIF frames</label>
+                <select id="limit">
+                    <option>14</option>
+                    <option>24</option>
+                    <option>36</option>
+                    <option>60</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="fit">Image fit</label>
+                <select id="fit">
+                    <option value="cover">Fill display (crop)</option>
+                    <option value="contain">Fit (letterbox)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <button class="secondary" id="rotate" type="button">
+                Rotate 90°
+            </button>
+            <button class="secondary" id="reset" type="button">
+                Reset view
+            </button>
+        </div>
+
+        <label for="brightness">
+            Brightness <span id="bv">100%</span>
+        </label>
+        <input id="brightness" type="range" min="50" max="160" value="100">
+
+        <label for="contrast">
+            Contrast <span id="cv">100%</span>
+        </label>
+        <input id="contrast" type="range" min="50" max="160" value="100">
+
+        <label for="saturation">
+            Saturation <span id="sv">100%</span>
+        </label>
+        <input id="saturation" type="range" min="0" max="200" value="100">
+
+        <p class="small">
+            Drag to move the image. Use the mouse wheel to zoom.
+            GIF frames are decoded individually.
+        </p>
+
+    </section>
+
+    <section class="panel">
+
+        <strong>Preview</strong>
+        <canvas id="preview" width="128" height="160"></canvas>
+
+        <label style="display:flex;align-items:center;gap:10px;margin:12px 0;">
+            <input id="viewLock" type="checkbox" style="width:20px;height:20px;">
+            Lock crop / position / zoom
+        </label>
+        <p class="small">
+            When locked, dragging, zooming, rotating and changing the image fit are disabled.
+        </p>
+
+        <button id="send" type="button" disabled>
+            Send to glasses
+        </button>
+
+        <p id="status" class="status">
+            Connect your phone to SmartGlasses Wi-Fi,
+            then open http://192.168.4.1
+        </p>
+
+    </section>
+
+    <script src="/gifuct.min.js"></script>
+
+    <script>
+        (() => {
+            'use strict';
+
+            const $ = id => document.getElementById(id);
+
+            const canvas = $('preview');
+            const ctx = canvas.getContext('2d', {
+                willReadFrequently: true
+            });
+
+            let stillSource = null;
+            let sourceW = 0;
+            let sourceH = 0;
+            let fileIsGif = false;
+
+            let rotation = 0;
+            let zoom = 1;
+            let panX = 0;
+            let panY = 0;
+
+            const activePointers = new Map();
+            let pinchStartDistance = 0;
+            let pinchStartZoom = 1;
+            let pointerStart = null;
+            let viewLocked = false;
+
+            function status(s) {
+                $('status').textContent = s;
+            }
+
+            function dims() {
+                return $('orientation').value === 'portrait'
+                    ? [128, 160]
+                    : [160, 128];
+            }
+
+            function setCanvasSize() {
+                const [w, h] = dims();
+                canvas.width = w;
+                canvas.height = h;
+                render();
+            }
+
+            function render(src = stillSource, sw = sourceW, sh = sourceH) {
+                if (!src || !sw || !sh) return;
+
+                const [w, h] = dims();
+
+                if (canvas.width !== w || canvas.height !== h) {
+                    canvas.width = w;
+                    canvas.height = h;
+                }
+
+                ctx.save();
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, w, h);
+
+                ctx.filter =
+                    `brightness(${$('brightness').value}%) ` +
+                    `contrast(${$('contrast').value}%) ` +
+                    `saturate(${$('saturation').value}%)`;
+
+                const rad = rotation * Math.PI / 180;
+                const rotated = (rotation % 180) !== 0;
+
+                const rw = rotated ? sh : sw;
+                const rh = rotated ? sw : sh;
+
+                const scaleBase = $('fit').value === 'cover'
+                    ? Math.max(w / rw, h / rh)
+                    : Math.min(w / rw, h / rh);
+
+                const scale = scaleBase * zoom;
+
+                ctx.translate(
+                    w / 2 + panX,
+                    h / 2 + panY
+                );
+
+                ctx.rotate(rad);
+
+                ctx.drawImage(
+                    src,
+                    -sw * scale / 2,
+                    -sh * scale / 2,
+                    sw * scale,
+                    sh * scale
+                );
+
+                ctx.restore();
+                ctx.filter = 'none';
+            }
+
+            function resetView() {
+                rotation = 0;
+                zoom = 1;
+                panX = 0;
+                panY = 0;
+                render();
+            }
+
+            function readRgb565(sourceCanvas) {
+                const c = sourceCanvas.getContext('2d', {
+                    willReadFrequently: true
+                });
+
+                const data = c.getImageData(
+                    0, 0,
+                    sourceCanvas.width,
+                    sourceCanvas.height
+                ).data;
+
+                const out = new Uint8Array(
+                    sourceCanvas.width * sourceCanvas.height * 2
+                );
+
+                for (let i = 0, j = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+
+                    const v =
+                        ((r & 0xF8) << 8) |
+                        ((g & 0xFC) << 3) |
+                        (b >> 3);
+
+                    // RGB565 little-endian
+                    out[j++] = v & 255;
+                    out[j++] = (v >> 8) & 255;
+                }
+
+                return out;
+            }
+
+            function makeRenderedPixels(src, sw, sh) {
+                render(src, sw, sh);
+                return readRgb565(canvas);
+            }
+
+            function parseGif(buffer) {
+                if (
+                    !window.Gifuct ||
+                    typeof Gifuct.parseGIF !== 'function' ||
+                    typeof Gifuct.decompressFrames !== 'function'
+                ) {
+                    throw new Error(
+                        'GIF decoder missing. Check that gifuct.min.js is in the data folder.'
+                    );
+                }
+
+                const parsed = Gifuct.parseGIF(buffer);
+                const frames = Gifuct.decompressFrames(parsed, true);
+
+                if (!frames || !frames.length) {
+                    throw new Error('No GIF frames were decoded.');
+                }
+
+                return { parsed, frames };
+            }
+
+
+            function gifCompositedFrames(parsed, frames, maxFrames) {
+                const sw = parsed.lsd.width;
+                const sh = parsed.lsd.height;
+
+                // Full-size canvas containing the composed GIF image.
+                const comp = document.createElement('canvas');
+                comp.width = sw;
+                comp.height = sh;
+
+                const c = comp.getContext('2d', {
+                    willReadFrequently: true
+                });
+
+                c.clearRect(0, 0, sw, sh);
+
+                // Separate canvas for individual GIF frame patches.
+                const patchCanvas = document.createElement('canvas');
+                const pc = patchCanvas.getContext('2d');
+
+                const all = [];
+
+                let previous = null;
+                let restore = null;
+
+                for (const f of frames) {
+
+                    // Apply the previous frame's disposal operation.
+                    if (previous) {
+                        if (previous.disposalType === 2) {
+                            const d = previous.dims;
+
+                            c.clearRect(
+                                d.left,
+                                d.top,
+                                d.width,
+                                d.height
+                            );
+
+                        } else if (
+                            previous.disposalType === 3 &&
+                            restore
+                        ) {
+                            c.putImageData(restore, 0, 0);
+                        }
+                    }
+
+                    // Save the canvas before drawing a frame that
+                    // requests restore-to-previous.
+                    restore = (f.disposalType === 3)
+                        ? c.getImageData(0, 0, sw, sh)
+                        : null;
+
+                    const d = f.dims;
+
+                    // Put the decoded pixels on a separate patch canvas.
+                    patchCanvas.width = d.width;
+                    patchCanvas.height = d.height;
+
+                    const patch = new ImageData(
+                        new Uint8ClampedArray(f.patch),
+                        d.width,
+                        d.height
+                    );
+
+                    pc.putImageData(patch, 0, 0);
+
+                    // IMPORTANT:
+                    // drawImage uses normal alpha compositing.
+                    // Transparent pixels now reveal the previous frame
+                    // instead of overwriting it.
+                    c.drawImage(
+                        patchCanvas,
+                        d.left,
+                        d.top
+                    );
+
+                    // Save a complete composed frame.
+                    all.push(comp.toDataURL('image/png'));
+
+                    previous = f;
+                }
+
+                // Select frames evenly within the configured limit.
+                const count = Math.min(maxFrames, all.length);
+                const selected = [];
+
+                for (let i = 0; i < count; i++) {
+                    const index = count === 1
+                        ? 0
+                        : Math.round(i * (all.length - 1) / (count - 1));
+
+                    selected.push(all[index]);
+                }
+
+                return selected;
+            }
+
+
+            function resetAdjustments() {
+                $('brightness').value = 100;
+                $('contrast').value = 100;
+                $('saturation').value = 100;
+
+                $('bv').textContent = '100%';
+                $('cv').textContent = '100%';
+                $('sv').textContent = '100%';
+            }
+
+
+            async function loadFile(file) {
+                if (!file) return;
+
+                $('send').disabled = true;
+
+                fileIsGif =
+                    /\.gif$/i.test(file.name) ||
+                    file.type === 'image/gif';
+
+                const url = URL.createObjectURL(file);
+
+                try {
+                    const img = new Image();
+
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = () => reject(
+                            new Error('Could not open image')
+                        );
+                        img.src = url;
+                    });
+
+                    stillSource = img;
+                    sourceW = img.naturalWidth;
+                    sourceH = img.naturalHeight;
+
+                    resetAdjustments()
+                    resetView();
+
+                    $('send').disabled = false;
+
+                    status(
+                        `Loaded ${file.name} (${sourceW}×${sourceH})` +
+                        `${fileIsGif ? ' · animated GIF' : ''}.`
+                    );
+
+                } catch (e) {
+                    status(e.message);
+
+                } finally {
+                    URL.revokeObjectURL(url);
+                }
+            }
+
+            function makeHeader(w, h, count, delay) {
+                const b = new ArrayBuffer(16);
+                const v = new DataView(b);
+
+                // "SGM1" little-endian
+                v.setUint32(0, 0x314D4753, true);
+
+                v.setUint16(4, w, true);
+                v.setUint16(6, h, true);
+                v.setUint16(8, count, true);
+                v.setUint16(10, delay, true);
+
+                // Pixel format 1 = RGB565 little-endian
+                v.setUint8(12, 1);
+                v.setUint8(13, 0);
+                v.setUint8(14, 0);
+                v.setUint8(15, 0);
+
+                return new Uint8Array(b);
+            }
+
+            async function sendMedia() {
+                if (!stillSource) return;
+
+                const button = $('send');
+                button.disabled = true;
+                button.textContent = 'Preparing…';
+
+                const [w, h] = dims();
+
+                const delay = Math.max(
+                    40,
+                    Math.min(2000, Number($('delay').value) || 100)
+                );
+
+                const maxFrames = Number($('limit').value);
+
+                try {
+                    status('Preparing media…');
+
+                    const chunks = [];
+
+                    if (fileIsGif) {
+                        const input = $('file').files[0];
+                        const buffer = await input.arrayBuffer();
+
+                        const { parsed, frames } = parseGif(buffer);
+
+                        const selected = gifCompositedFrames(
+                            parsed,
+                            frames,
+                            maxFrames
+                        );
+
+                        const frameCanvas = document.createElement('canvas');
+                        frameCanvas.width = parsed.lsd.width;
+                        frameCanvas.height = parsed.lsd.height;
+
+                        const fctx = frameCanvas.getContext('2d', {
+                            willReadFrequently: true
+                        });
+
+                        for (let i = 0; i < selected.length; i++) {
+                            const img = new Image();
+
+                            await new Promise((resolve, reject) => {
+                                img.onload = resolve;
+                                img.onerror = reject;
+                                img.src = selected[i];
+                            });
+
+                            fctx.clearRect(
+                                0, 0,
+                                frameCanvas.width,
+                                frameCanvas.height
+                            );
+
+                            fctx.drawImage(img, 0, 0);
+
+                            chunks.push(
+                                makeRenderedPixels(
+                                    frameCanvas,
+                                    frameCanvas.width,
+                                    frameCanvas.height
+                                )
+                            );
+
+                            status(
+                                `Converting GIF frame ${i + 1}/${selected.length}…`
+                            );
+                        }
+
+                    } else {
+                        chunks.push(
+                            makeRenderedPixels(
+                                stillSource,
+                                sourceW,
+                                sourceH
+                            )
+                        );
+                    }
+
+                    const header = makeHeader(
+                        w,
+                        h,
+                        chunks.length,
+                        delay
+                    );
+
+                    // Build SGM in memory. No phone download.
+                    const blob = new Blob(
+                        [header, ...chunks],
+                        { type: 'application/octet-stream' }
+                    );
+
+                    const name = 'media.sgm';
+
+                    status(
+                        `Prepared ${w}×${h} · ${chunks.length} frame(s) · ` +
+                        `${(blob.size / 1024).toFixed(1)} KiB\nStarting upload…`
+                    );
+
+                    await uploadMedia(blob, name);
+
+                } catch (e) {
+                    console.error(e);
+                    status('Could not install media: ' + e.message);
+
+                } finally {
+                    button.disabled = !stillSource;
+                    button.textContent = 'Send to glasses';
+                }
+            }
+
+            function uploadMedia(blob, name) {
+                return new Promise((resolve, reject) => {
+                    const form = new FormData();
+
+                    // Keep field name "media" to match the existing firmware.
+                    form.append('media', blob, name);
+
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/upload');
+
+                    xhr.upload.onprogress = event => {
+                        if (event.lengthComputable) {
+                            const percent = Math.round(
+                                event.loaded * 100 / event.total
+                            );
+
+                            status(
+                                `Uploading to SmartGlasses… ${percent}%`
+                            );
+                        } else {
+                            status(
+                                'Uploading to SmartGlasses… keep this page open.'
+                            );
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        const message = xhr.responseText || '';
+
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            status(
+                                'Installed successfully. The display should now show your media.\n' +
+                                message
+                            );
+                            resolve();
+                        } else {
+                            reject(
+                                new Error(message || `HTTP ${xhr.status}`)
+                            );
+                        }
+                    };
+
+                    xhr.onerror = () => reject(
+                        new Error(
+                            'Network error. Check that your phone is connected to SmartGlasses Wi-Fi.'
+                        )
+                    );
+
+                    xhr.onabort = () => reject(
+                        new Error('Upload was cancelled.')
+                    );
+
+                    status('Uploading to SmartGlasses… keep this page open.');
+
+                    xhr.send(form);
+                });
+            }
+
+            // UI events
+
+            $('file').addEventListener('change', e => {
+                loadFile(e.target.files[0]);
+            });
+
+            $('orientation').addEventListener(
+                'change',
+                setCanvasSize
+            );
+
+            $('fit').addEventListener('change', () => render());
+
+            $('rotate').addEventListener('click', () => {
+                if (viewLocked) return;
+                rotation = (rotation + 90) % 360;
+                render();
+            });
+
+            $('reset').addEventListener('click', () => {
+                if (viewLocked) return;
+
+                rotation = 0;
+                zoom = 1;
+                panX = 0;
+                panY = 0;
+
+                pointerStart = null;
+                activePointers.clear();
+                pinchStartDistance = 0;
+
+                render();
+            });
+
+            ['brightness', 'contrast', 'saturation'].forEach(id => {
+                $(id).addEventListener('input', () => {
+                    $(id[0] + 'v').textContent = $(id).value + '%';
+                    render();
+                });
+            });
+
+            // Single button: convert and upload directly.
+            $('send').addEventListener('click', sendMedia);
+
+            $('viewLock').addEventListener('change', e => {
+                pointerStart = null;
+                activePointers.clear();
+                pinchStartDistance = 0;
+                viewLocked = e.target.checked;
+
+                // Disable controls that change the image view.
+                $('rotate').disabled = viewLocked;
+                $('reset').disabled = viewLocked;
+                $('orientation').disabled = viewLocked;
+                $('fit').disabled = viewLocked;
+
+                // Stop an unfinished drag when locking.
+                if (viewLocked) {
+                    pointerStart = null;
+                }
+            });
+
+            // Drag to reposition.
+
+            // Drag and two-finger pinch zoom.
+            function pointerDistance(a, b) {
+                const dx = a.x - b.x;
+                const dy = a.y - b.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            canvas.addEventListener('pointerdown', e => {
+                if (viewLocked) return;
+
+                canvas.setPointerCapture(e.pointerId);
+
+                activePointers.set(e.pointerId, {
+                    x: e.clientX,
+                    y: e.clientY
+                });
+
+                if (activePointers.size === 1) {
+                    pointerStart = {
+                        x: e.clientX,
+                        y: e.clientY,
+                        px: panX,
+                        py: panY
+                    };
+                }
+
+                if (activePointers.size === 2) {
+                    const points = [...activePointers.values()];
+
+                    pinchStartDistance = pointerDistance(
+                        points[0], points[1]
+                    );
+
+                    pinchStartZoom = zoom;
+                    pointerStart = null;
+                }
+            });
+
+            canvas.addEventListener('pointermove', e => {
+                if (viewLocked || !activePointers.has(e.pointerId)) return;
+
+                activePointers.set(e.pointerId, {
+                    x: e.clientX,
+                    y: e.clientY
+                });
+
+                if (activePointers.size === 2) {
+                    const points = [...activePointers.values()];
+
+                    const distance = pointerDistance(
+                        points[0], points[1]
+                    );
+
+                    if (pinchStartDistance > 0) {
+                        zoom = Math.max(
+                            0.25,
+                            Math.min(
+                                5,
+                                pinchStartZoom * distance / pinchStartDistance
+                            )
+                        );
+
+                        render();
+                    }
+
+                } else if (activePointers.size === 1 && pointerStart) {
+                    const r = canvas.getBoundingClientRect();
+
+                    panX = pointerStart.px +
+                        (e.clientX - pointerStart.x) * canvas.width / r.width;
+
+                    panY = pointerStart.py +
+                        (e.clientY - pointerStart.y) * canvas.height / r.height;
+
+                    render();
+                }
+            });
+
+            function endPointer(e) {
+                activePointers.delete(e.pointerId);
+
+                pointerStart = null;
+                pinchStartDistance = 0;
+
+                if (activePointers.size === 1) {
+                    const remaining = [...activePointers.values()][0];
+
+                    pointerStart = {
+                        x: remaining.x,
+                        y: remaining.y,
+                        px: panX,
+                        py: panY
+                    };
+                }
+            }
+
+            canvas.addEventListener('pointerup', endPointer);
+            canvas.addEventListener('pointercancel', endPointer);
+            canvas.addEventListener('lostpointercapture', endPointer);
+
+            // Mouse-wheel zoom for computers.
+            canvas.addEventListener('wheel', e => {
+                e.preventDefault();
+
+                if (viewLocked) return;
+
+                zoom = Math.max(
+                    0.25,
+                    Math.min(
+                        5,
+                        zoom * (e.deltaY < 0 ? 1.08 : 0.92)
+                    )
+                );
+
+                render();
+            }, { passive: false });
+
+
+            setCanvasSize();
+
+        })();
+    </script>
+
+</body>
+
+</html>
