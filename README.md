@@ -145,6 +145,8 @@ Use the ESP8266 LittleFS filesystem uploader to upload the contents of the `data
 9. Wait for the upload to finish.
 10. Your media will appear on the TFT display.
 
+![](media_studio.jpeg) ![](preview.jpeg)
+
 If Android opens a captive-portal sign-in window, use the browser-opening option if available, or open the MiniTV address in your regular browser.
 
 ## 🖼️ Supported Media
