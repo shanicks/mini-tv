@@ -4,6 +4,8 @@ A DIY miniature display powered by an ESP8266 NodeMCU and a 1.8-inch ST7735 TFT 
 
 Upload your favourite wallpapers, animations, and GIFs directly over Wi-Fi using a browser-based media studio.
 
+![](https://github.com/shanicks/mini-tv/image.gif)
+
 ## ✨ Features
 
 - **Photo Display:** Convert and display custom images on the TFT screen.
