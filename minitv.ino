@@ -336,7 +336,7 @@ void setup() {
 
   delay(100);
 
-  Serial.print("SmartGlasses AP IP: ");
+  Serial.print("MiniTV AP IP: ");
   Serial.println(WiFi.softAPIP());
 
   dnsServer.start(
